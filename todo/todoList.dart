@@ -13,7 +13,7 @@ void main(List<String> arguments) {
   parser.addFlag('new_task', negatable: false, abbr: 'n');
   parser.addFlag('del_task', negatable: false, abbr: 'd');
   parser.addFlag('all_tasks', negatable: false, abbr: 's');
-  
+  parser.addFlag('show_category', negatable: false, abbr: 'c');
 
   argResults = parser.parse(arguments);
   final delTaskId = argResults.rest;
@@ -43,7 +43,11 @@ class TodoList {
       });
       
 
-    } 
+    } else if(argResults['show_category']) {
+      if(rest.length > 0){
+        tasks.showCategory(rest[0]);
+      }
+    }
   }
 }
 
