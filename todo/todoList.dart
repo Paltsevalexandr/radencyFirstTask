@@ -52,13 +52,16 @@ class TodoList {
 }
 
 class Data {
-  void saveTask(name, category) {
+  void saveTask(name, category, [String day = null]) {
     int id = ++allTasks['lastId'];
     Map task = {
       "name": name,
       "category": category,
       "id": id
     };
+    if(day != null) {
+      task['day'] = day;
+    }
     
     List currentCategory = allTasks[task['category']].add({"id": id, ...task});
     allTasks = {task['category']: currentCategory, "lastId": id, ...?allTasks};
@@ -97,8 +100,9 @@ class Data {
 class Tasks {
   String name = '';
   String category = '';
+  String day = null;
 
-  Future createTask(int taskNumber) async {
+  void createTask(int taskNumber) {
     
     stdout.writeln('Do you want to create new task?(y or n)');
     String input = stdin.readLineSync();
@@ -111,7 +115,13 @@ class Tasks {
       case('y'):
         chooseName();
         chooseCategory();
-        data.saveTask(name, category);
+        stdout.writeln('Does this task is recurring? (y or n)');
+        if(stdin.readLineSync() == 'y') {
+          chooseDay();
+        }else {
+          day = null;
+        }
+        data.saveTask(name, category, day);
         --taskNumber;
         
         if(taskNumber > 0) {
@@ -140,7 +150,6 @@ class Tasks {
   void chooseCategory() {
     stdout.writeln('What is the category of the task? 1 - Work tasks, 2 - Hobby, 3 - Homework');
     String inputCategory = stdin.readLineSync();
-    
     switch(inputCategory) {
       case('1'):
         category = 'Work_tasks';
@@ -160,6 +169,12 @@ class Tasks {
         break;
     }
   }
+
+  void chooseDay() {
+    List days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    DateTime day = DateTime.now();
+  }
+  
   void showCategory(String category) {
     data.getTasks();
     bool validCategory = false;
