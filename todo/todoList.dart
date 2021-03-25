@@ -4,63 +4,97 @@ import 'dart:convert';
 import 'package:args/args.dart';
 
 ArgResults argResults;
+Tasks tasks = Tasks();
+Data data = Data();
+TodoList todoList = TodoList();
+Map allTasks;
 void main(List<String> arguments) {
 
   final parser = ArgParser();
   parser.addFlag('add_task', negatable: false, abbr: 'a');
   parser.addFlag('del_task', negatable: false, abbr: 'd');
   parser.addFlag('all_tasks', negatable: false, abbr: 't');
+  parser.addFlag('show_category', negatable: false, abbr: 'c');
 
   argResults = parser.parse(arguments);
   final delTaskId = argResults.rest;
-  cli(argResults, delTaskId);
+  todoList.cli(argResults, delTaskId);
 }
 
-void cli(argResults, rest) async {
-  Tasks task = Tasks();
-  try{
+class TodoList {
+  void cli(argResults, rest) {
+  
     if(argResults['add_task']) {
-      task.createTask();
+      int taskNumber = 1;
+      if(rest.length > 0 && int.parse(rest[0]) is int){
+        taskNumber = int.parse(rest[0]);
+      }
+      tasks.createTask(taskNumber);
       
     } else if(argResults['del_task']) {
-      todoList.delTask(int.parse(rest[0]));
+      data.delTask(int.parse(rest[0]));
+      print(rest);
 
 
     } else if(argResults['all_tasks']) {
-      Map allTasks = todoList.getTasks();
+      data.getTasks();
       stdout.writeln(allTasks);
-    }
-  } catch(_) {
-    await handleError();
-  }
-}
-void handleError() {
-  print('error');
-}
-TodoList todoList = TodoList();
 
-class TodoList {
-  Map getTasks() {
-    
+    } else if(argResults['show_category']) {
+      if(rest.length > 0){
+        tasks.showCategory(rest[0]);
+      }
+    }
   }
-  void saveTask() {
+}
+
+class Data {
+  void saveTask(name, category) {
+    int id = ++allTasks['lastId'];
+    Map task = {
+      "name": name,
+      "category": category,
+      "id": id
+    };
     
+    List currentCategory = allTasks[task['category']].add({"id": id, ...task});
+    allTasks = {task['category']: currentCategory, "lastId": id, ...?allTasks};
+    print('saveTask: $allTasks');
+    saveData(allTasks);
     
   }
   void delTask(int id) {
-    
+    Map thisTask;
+    getTasks();
+    allTasks.forEach((key, category) {
+      if(category is List) {
+        for(Map task in category) {
+          if(task['id'] == id) {
+            thisTask = task;
+          }
+        }
+      }
+    });
+    allTasks[thisTask['category']].remove(thisTask);
+    saveData(allTasks);
   }
   void saveData(data) {
-    
+    print('data: $data');
+    final file = File('allTasks.json').openWrite(mode: FileMode.write);
+    file.write(jsonEncode(data));
+  }
+  void getTasks() {
+    final tasks = File('allTasks.json').readAsStringSync();
+    print('get:$tasks');
+    allTasks = jsonDecode(tasks);
   }
 }
 
 class Tasks {
-  int id = 0;
   String name = '';
   String category = '';
 
-  void createTask() {
+  void createTask(int taskNumber) {
     
     stdout.writeln('Do you want to create new task?(y or n)');
     String input = stdin.readLineSync();
@@ -72,14 +106,20 @@ class Tasks {
       
       case('y'):
         stdout.writeln('begin create');
+        data.getTasks();
         chooseName();
         chooseCategory();
-        //todoList.saveTask();
+        data.saveTask(name, category);
+        --taskNumber;
+        print('number: $taskNumber');
+        if(taskNumber > 0) {
+          createTask(taskNumber);
+        }
         break;
 
       default:
         stdout.writeln('Print "y" or "n"');
-        createTask();
+        createTask(taskNumber);
         break;
     }
   }
@@ -115,6 +155,22 @@ class Tasks {
         stdout.writeln('Choose some category');
         chooseCategory();
         break;
+    }
+  }
+  void showCategory(String category) {
+    data.getTasks();
+    bool validCategory = false;
+    allTasks.forEach((key, value) {
+      if(key == category) {
+        validCategory = true;
+      }
+    });
+    if(validCategory) {
+      int taskNumber = allTasks[category].length;
+      List thisCategory = allTasks[category];
+      print('Category contain $taskNumber tasks. $thisCategory');
+    } else {
+      print('There is no such category');
     }
   }
 }
