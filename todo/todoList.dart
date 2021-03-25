@@ -9,11 +9,10 @@ Data data = Data();
 TodoList todoList = TodoList();
 Map allTasks;
 void main(List<String> arguments) {
-
   final parser = ArgParser();
-  parser.addFlag('add_task', negatable: false, abbr: 'a');
+  parser.addFlag('new_task', negatable: false, abbr: 'n');
   parser.addFlag('del_task', negatable: false, abbr: 'd');
-  parser.addFlag('all_tasks', negatable: false, abbr: 't');
+  parser.addFlag('all_tasks', negatable: false, abbr: 's');
   parser.addFlag('show_category', negatable: false, abbr: 'c');
 
   argResults = parser.parse(arguments);
@@ -24,7 +23,8 @@ void main(List<String> arguments) {
 class TodoList {
   void cli(argResults, rest) {
   
-    if(argResults['add_task']) {
+    if(argResults['new_task']) {
+      data.getTasks();
       int taskNumber = 1;
       if(rest.length > 0 && int.parse(rest[0]) is int){
         taskNumber = int.parse(rest[0]);
@@ -33,12 +33,15 @@ class TodoList {
       
     } else if(argResults['del_task']) {
       data.delTask(int.parse(rest[0]));
-      print(rest);
-
 
     } else if(argResults['all_tasks']) {
       data.getTasks();
-      stdout.writeln(allTasks);
+      allTasks.forEach((key, value) {
+        if(key != 'lastId') {
+          stdout.writeln(value);
+        }
+      });
+      
 
     } else if(argResults['show_category']) {
       if(rest.length > 0){
@@ -59,8 +62,6 @@ class Data {
     
     List currentCategory = allTasks[task['category']].add({"id": id, ...task});
     allTasks = {task['category']: currentCategory, "lastId": id, ...?allTasks};
-    print('saveTask: $allTasks');
-    saveData(allTasks);
     
   }
   void delTask(int id) {
@@ -75,17 +76,20 @@ class Data {
         }
       }
     });
-    allTasks[thisTask['category']].remove(thisTask);
-    saveData(allTasks);
+    if(thisTask != null) {
+      allTasks[thisTask['category']].remove(thisTask);
+      saveData(allTasks);
+    } else {
+      print('There is no task with this Id');
+    }
+    
   }
   void saveData(data) {
-    print('data: $data');
     final file = File('allTasks.json').openWrite(mode: FileMode.write);
     file.write(jsonEncode(data));
   }
   void getTasks() {
     final tasks = File('allTasks.json').readAsStringSync();
-    print('get:$tasks');
     allTasks = jsonDecode(tasks);
   }
 }
@@ -94,7 +98,7 @@ class Tasks {
   String name = '';
   String category = '';
 
-  void createTask(int taskNumber) {
+  Future createTask(int taskNumber) async {
     
     stdout.writeln('Do you want to create new task?(y or n)');
     String input = stdin.readLineSync();
@@ -105,13 +109,11 @@ class Tasks {
         break;
       
       case('y'):
-        stdout.writeln('begin create');
-        data.getTasks();
         chooseName();
         chooseCategory();
         data.saveTask(name, category);
         --taskNumber;
-        print('number: $taskNumber');
+        
         if(taskNumber > 0) {
           createTask(taskNumber);
         }
@@ -122,6 +124,7 @@ class Tasks {
         createTask(taskNumber);
         break;
     }
+    data.saveData(allTasks);
   }
   void chooseName() {
     stdout.writeln('What is the name of the task?');
@@ -140,7 +143,7 @@ class Tasks {
     
     switch(inputCategory) {
       case('1'):
-        category = 'Work tasks';
+        category = 'Work_tasks';
         break;
 
       case('2'):
