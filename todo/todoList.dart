@@ -172,7 +172,8 @@ class Tasks {
 
   void chooseDay() {
     List days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    DateTime day = DateTime.now();
+    DateTime date = DateTime.now();
+    day = days[date.weekday];
   }
   
   void showCategory(String category) {
