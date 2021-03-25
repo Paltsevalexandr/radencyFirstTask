@@ -1,6 +1,42 @@
 import 'dart:core';
 import 'dart:io';
+import 'dart:convert';
+import 'package:args/args.dart';
 
+ArgResults argResults;
+void main(List<String> arguments) {
+
+  final parser = ArgParser();
+  parser.addFlag('add_task', negatable: false, abbr: 'a');
+  parser.addFlag('del_task', negatable: false, abbr: 'd');
+  parser.addFlag('all_tasks', negatable: false, abbr: 't');
+
+  argResults = parser.parse(arguments);
+  final delTaskId = argResults.rest;
+  cli(argResults, delTaskId);
+}
+
+void cli(argResults, rest) async {
+  Tasks task = Tasks();
+  try{
+    if(argResults['add_task']) {
+      task.createTask();
+      
+    } else if(argResults['del_task']) {
+      todoList.delTask(int.parse(rest[0]));
+
+
+    } else if(argResults['all_tasks']) {
+      Map allTasks = todoList.getTasks();
+      stdout.writeln(allTasks);
+    }
+  } catch(_) {
+    await handleError();
+  }
+}
+void handleError() {
+  print('error');
+}
 TodoList todoList = TodoList();
 
 class TodoList {
