@@ -20,6 +20,7 @@ void main(List<String> arguments) {
   todoList.cli(argResults, delTaskId);
 }
 
+
 class TodoList {
   void cli(argResults, rest) {
   
@@ -41,8 +42,6 @@ class TodoList {
           stdout.writeln(value);
         }
       });
-      
-
     } 
   }
 }
