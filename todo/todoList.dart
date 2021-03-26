@@ -12,8 +12,8 @@ void main(List<String> arguments) {
   final parser = ArgParser();
   parser.addFlag('new_task', negatable: false, abbr: 'n');
   parser.addFlag('del_task', negatable: false, abbr: 'd');
-  parser.addFlag('all_tasks', negatable: false, abbr: 's');
-  
+  parser.addFlag('show_all_tasks', negatable: false, abbr: 's');
+  parser.addFlag('show_category', negatable: false, abbr: 'c');
 
   argResults = parser.parse(arguments);
   final delTaskId = argResults.rest;
@@ -35,14 +35,16 @@ class TodoList {
     } else if(argResults['del_task']) {
       data.delTask(int.parse(rest[0]));
 
-    } else if(argResults['all_tasks']) {
+    } else if(argResults['show_all_tasks']) {
       data.getTasks();
       allTasks.forEach((key, value) {
         if(key != 'lastId') {
           stdout.writeln(value);
         }
       });
-    } 
+    } else if(argResults['show_category']) {
+      tasks.showCategory(rest[0]);
+    }
   }
 }
 
@@ -164,13 +166,11 @@ class Tasks {
         break;
     }
   }
-
   void chooseDay() {
     List days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     DateTime date = DateTime.now();
     day = days[date.weekday];
   }
-
   void showCategory(String category) {
     data.getTasks();
     bool validCategory = false;
