@@ -42,8 +42,6 @@ class TodoList {
           stdout.writeln(value);
         }
       });
-      
-
     } else if(argResults['show_category']) {
       if(rest.length > 0){
         tasks.showCategory(rest[0]);
