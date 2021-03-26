@@ -42,8 +42,12 @@ class TodoList {
           stdout.writeln(value);
         }
       });
+      
+
     } else if(argResults['show_category']) {
-      tasks.showCategory(rest[0]);
+      if(rest.length > 0){
+        tasks.showCategory(rest[0]);
+      }
     }
   }
 }
