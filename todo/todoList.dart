@@ -8,6 +8,7 @@ Tasks tasks = Tasks();
 Data data = Data();
 TodoList todoList = TodoList();
 Map allTasks;
+enum Days {sunday, monday, tuesday, wednesday, thursday, friday, saturday}
 void main(List<String> arguments) {
   final parser = ArgParser();
   parser.addFlag('new_task', negatable: false, abbr: 'n');
@@ -169,9 +170,8 @@ class Tasks {
     }
   }
   void chooseDay() {
-    List days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     DateTime date = DateTime.now();
-    day = days[date.weekday];
+    day = Days.values[date.weekday].toString().split('.').last;
   }
   void showCategory(String category) {
     data.getTasks();
