@@ -4,189 +4,217 @@ import 'dart:convert';
 import 'package:args/args.dart';
 
 ArgResults argResults;
-Tasks tasks = Tasks();
-Data data = Data();
+
 TodoList todoList = TodoList();
-Map allTasks;
-enum Days {sunday, monday, tuesday, wednesday, thursday, friday, saturday}
+List allTasks;
+int lastId;
+enum Days {monday, tuesday, wednesday, thursday, friday, saturday, sunday}
 void main(List<String> arguments) {
   final parser = ArgParser();
-  parser.addFlag('new_task', negatable: false, abbr: 'n');
+  parser.addFlag('new_task', negatable: false, abbr: 'n'); //write number to create few tasks
   parser.addFlag('del_task', negatable: false, abbr: 'd');
   parser.addFlag('show_all_tasks', negatable: false, abbr: 's');
-  parser.addFlag('show_category', negatable: false, abbr: 'c');
 
   argResults = parser.parse(arguments);
-  final delTaskId = argResults.rest;
-  todoList.cli(argResults, delTaskId);
+  final rest = argResults.rest;
+  todoList.chooseAction(argResults, rest);
 }
-
 
 class TodoList {
-  void cli(argResults, rest) {
-  
+  void chooseAction(argResults, rest) {
     if(argResults['new_task']) {
-      data.getTasks();
+      getData();
       int taskNumber = 1;
-      if(rest.length > 0 && int.parse(rest[0]) is int){
+      if(rest.isNotEmpty && int.parse(rest[0]) is int){
         taskNumber = int.parse(rest[0]);
       }
-      tasks.createTask(taskNumber);
+      creatingTask(taskNumber);
       
     } else if(argResults['del_task']) {
-      data.delTask(int.parse(rest[0]));
+        if(rest.isNotEmpty && int.parse(rest[0]) is int) {
+          delTask(int.parse(rest[0]));
+        }
 
     } else if(argResults['show_all_tasks']) {
-      data.getTasks();
-      allTasks.forEach((key, value) {
-        if(key != 'lastId') {
-          stdout.writeln(value);
-        }
-      });
-    } else if(argResults['show_category']) {
-      if(rest.length > 0){
-        tasks.showCategory(rest[0]);
-      }
+      showAllTasks();
     }
   }
-}
 
-class Data {
-  void saveTask(name, category, [String day = null]) {
-    int id = ++allTasks['lastId'];
-    Map task = {
-      "name": name,
-      "category": category,
-      "id": id
-    };
-    if(day != null) {
-      task['day'] = day;
-    }
-    
-    List currentCategory = allTasks[task['category']].add({"id": id, ...task});
-    allTasks = {task['category']: currentCategory, "lastId": id, ...?allTasks};
-    
-  }
-  void delTask(int id) {
-    Map thisTask;
-    getTasks();
-    allTasks.forEach((key, category) {
-      if(category is List) {
-        for(Map task in category) {
-          if(task['id'] == id) {
-            thisTask = task;
-          }
-        }
-      }
-    });
-    if(thisTask != null) {
-      allTasks[thisTask['category']].remove(thisTask);
-      saveData(allTasks);
-    } else {
-      print('There is no task with this Id');
-    }
-    
-  }
-  void saveData(data) {
-    final file = File('allTasks.json').openWrite(mode: FileMode.write);
-    file.write(jsonEncode(data));
-  }
-  void getTasks() {
-    final tasks = File('allTasks.json').readAsStringSync();
-    allTasks = jsonDecode(tasks);
-  }
-}
-
-class Tasks {
-  String name = '';
-  String category = '';
-  String day = null;
-
-  void createTask(int taskNumber) {
-    
+  static void creatingTask(taskNumber) {
     stdout.writeln('Do you want to create new task?(y or n)');
     String input = stdin.readLineSync();
-  
-    switch(input.toLowerCase()){
+    switch(input.toLowerCase()) {
       case('n'):
         stdout.writeln('ok');
         break;
-      
       case('y'):
-        chooseName();
-        chooseCategory();
-        stdout.writeln('Does this task is recurring? (y or n)');
-        if(stdin.readLineSync() == 'y') {
-          chooseDay();
-        }else {
-          day = null;
-        }
-        data.saveTask(name, category, day);
+        final newTask = isRecurring();
+
+        Map task = newTask.createNewTask();
+        saveTask(task);
         --taskNumber;
-        
+
         if(taskNumber > 0) {
-          createTask(taskNumber);
+          creatingTask(taskNumber);
         }
         break;
 
       default:
-        stdout.writeln('Print "y" or "n"');
-        createTask(taskNumber);
+        print('Print "y" or "n"');
+        creatingTask(taskNumber);
         break;
     }
-    data.saveData(allTasks);
+    saveData({'tasks': allTasks, 'lastId': lastId});
   }
-  void chooseName() {
-    stdout.writeln('What is the name of the task?');
-    String inputName = stdin.readLineSync();
 
-    if(inputName.length < 1) {
+  static isRecurring() {
+    stdout.writeln('Does this task is recurring? (y or n)');
+
+    switch(stdin.readLineSync().toLowerCase()) {
+      case('y'):
+        return RecurringTask();
+      case('n'):
+        return PlainTask();
+      default:
+        print('Print "y" or "n"');
+        isRecurring();
+        break;
+    }
+  }
+
+  static void saveTask(task) {
+    int id = ++lastId;
+    task['id'] = id;
+    
+    allTasks = [task, ...?allTasks];
+    lastId = id;
+  }
+
+  static void delTask(int id) {
+    getData();
+    var result = [
+      for (var i in allTasks) if(i['id'] != id) i
+    ];
+    saveData({'tasks': result, 'lastId': lastId});
+  }
+
+  static void saveData(data) {
+    final file = File('allTasks.json').openWrite(mode: FileMode.write);
+    file.write(jsonEncode(data));
+  }
+
+  static void getData() {
+    final dataJson = File('allTasks.json').readAsStringSync();
+    Map data = jsonDecode(dataJson);
+    allTasks = data['tasks'];
+    lastId = data['lastId'];
+  }
+
+  static void showAllTasks() {
+    getData();
+    Map categories = {};
+    for(Map task in allTasks) {
+      categories[task['category']] = [...?categories[task['category']], task];
+    }
+    categories.forEach((key, value) {
+      categories[key] = value.length;
+    });
+    print(categories);
+  }
+}
+
+abstract class Task<T> {
+  String name;
+  String category;
+
+  Map createNewTask();
+  String chooseName();
+  String chooseCategory();
+  void message(T name, T category);
+}
+
+class RecurringTask implements Task {
+  String name;
+  String category;
+  String dayOfTheWeek;
+
+  Map createNewTask() {
+    name = chooseName();
+    category = chooseCategory();
+    dayOfTheWeek = chooseDay();
+    message(name, category);
+
+    return {
+      'name': name,
+      'category': category,
+      'dayOfTheWeek': dayOfTheWeek
+    };
+  }
+
+  String chooseName() {
+    stdout.writeln('What is the name of the task?');
+    String name = stdin.readLineSync();
+
+    if(name.length < 1) {
+      print('Name must containe at list 1 symbol');
+    }
+    return name;
+  }
+
+  String chooseCategory() {
+    stdout.writeln('What is the category of the task?');
+    String category = stdin.readLineSync();
+    if(category.length < 1) {
+      print('Category must containe at list 1 symbol');
+      chooseCategory();
+    }
+    return category;
+  }
+
+  String chooseDay() {
+    DateTime date = DateTime.now();
+    return Days.values[date.weekday - 1].toString().split('.').last;
+  }
+  void message(name, category) {
+    print('You created plain task "$name", category "$category"');
+  }
+}
+
+class PlainTask implements Task {
+  String name;
+  String category;
+
+  Map createNewTask() {
+    name = chooseName();
+    category = chooseCategory();
+    message(name, category);
+    return {
+      'name': name,
+      'category': category,
+    };
+  }
+
+  String chooseName() {
+    stdout.writeln('What is the name of the task?');
+    String name = stdin.readLineSync();
+
+    if(name.length < 1) {
       stdout.writeln('Name must containe at list 1 symbol');
       chooseName();
-    } else {
-      name = inputName;
     }
+    return name;
   }
-  void chooseCategory() {
-    stdout.writeln('What is the category of the task? 1 - Work tasks, 2 - Hobby, 3 - Homework');
-    String inputCategory = stdin.readLineSync();
-    switch(inputCategory) {
-      case('1'):
-        category = 'Work_tasks';
-        break;
 
-      case('2'):
-        category = 'Hobby';
-        break;
-
-      case('3'):
-        category = 'Homework';
-        break;
-
-      default:
-        stdout.writeln('Choose some category');
-        chooseCategory();
-        break;
+  String chooseCategory() {
+    stdout.writeln('What is the category of the task?');
+    String category = stdin.readLineSync();
+    if(category.length < 1) {
+      stdout.writeln('Category must containe at list 1 symbol');
+      chooseCategory();
     }
+    return category;
   }
-  void chooseDay() {
-    DateTime date = DateTime.now();
-    day = Days.values[date.weekday].toString().split('.').last;
-  }
-  void showCategory(String category) {
-    data.getTasks();
-    bool validCategory = false;
-    allTasks.forEach((key, value) {
-      if(key == category) {
-        validCategory = true;
-      }
-    });
-    if(validCategory) {
-      int taskNumber = allTasks[category].length;
-      List thisCategory = allTasks[category];
-      print('Category contain $taskNumber tasks. $thisCategory');
-    } else {
-      print('There is no such category');
-    }
+  void message(name, category) {
+    print('You created plain task "$name", category "$category"');
   }
 }
